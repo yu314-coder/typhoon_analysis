@@ -985,29 +985,25 @@ def generate_genesis_prediction_monthly(month, oni_value, year=2025):
             # Check for genesis events (GPI > threshold)
             genesis_threshold = 1.5  # Adjusted threshold
             if np.max(gpi_field) > genesis_threshold:
-                # Find peak genesis locations
-                peak_indices = np.where(gpi_field > genesis_threshold)
-                if len(peak_indices[0]) > 0:
-                    # Select strongest genesis point
-                    max_idx = np.argmax(gpi_field)
-                    max_i, max_j = np.unravel_index(max_idx, gpi_field.shape)
-                    
+                # Consider top candidate locations rather than a single point
+                candidate_mask = gpi_field >= np.percentile(gpi_field, 97)
+                cand_indices = np.argwhere(candidate_mask)
+                np.random.shuffle(cand_indices)
+                cand_indices = cand_indices[:3]  # up to 3 candidates per day
+
+                for (max_i, max_j) in cand_indices:
                     genesis_lat = lat_range[max_i]
                     genesis_lon = lon_range[max_j]
 
-                    # Adjust location using a simplified physics-based NWP
-                    # model with AI post-processing bias corrections. Real
-                    # systems such as IBM's GRAF combine NWP output with
-                    # machine learning to refine genesis estimates.
+                    # Adjust location using simplified NWP+AI corrections
                     genesis_lat, genesis_lon = adjust_genesis_location_with_nwp_ai(
                         genesis_lat, genesis_lon, month, oni_value
                     )
                     genesis_gpi = gpi_field[max_i, max_j]
-                    
+
                     # Determine probability of actual genesis
-                    # Probability influenced by ONI to mimic El Niño/La Niña effects
                     genesis_prob = np.clip(
-                        0.3 + genesis_gpi / 4.0 + 0.2 * np.tanh(oni_value), 0, 0.9
+                        0.4 + genesis_gpi / 3.5 + 0.2 * np.tanh(oni_value), 0, 0.95
                     )
 
                     if np.random.random() < genesis_prob:
@@ -1216,6 +1212,8 @@ def create_predict_animation(prediction_data, enable_animation=True):
         # figure out map bounds
         all_lats = [pt['lat'] for s in storms for pt in s.get('track',[])]
         all_lons = [pt['lon'] for s in storms for pt in s.get('track',[])]
+        all_lats += [g['lat'] for g in prediction_data.get('genesis_events', [])]
+        all_lons += [g['lon'] for g in prediction_data.get('genesis_events', [])]
         mb = {
             'lat_min': min(5,  min(all_lats)-5) if all_lats else 5,
             'lat_max': max(35, max(all_lats)+5) if all_lats else 35,
@@ -1412,9 +1410,11 @@ def create_genesis_animation(prediction_data, enable_animation=True):
 
         # ---- 2) Build animation frames ----
         frames = []
-        # determine map bounds from all storm tracks
+        # determine map bounds from storm tracks and genesis points
         all_lats = [pt['lat'] for storm in storm_predictions for pt in storm.get('track', [])]
         all_lons = [pt['lon'] for storm in storm_predictions for pt in storm.get('track', [])]
+        all_lats += [g['lat'] for g in prediction_data.get('genesis_events', [])]
+        all_lons += [g['lon'] for g in prediction_data.get('genesis_events', [])]
         map_bounds = {
             'lat_min': min(5, min(all_lats) - 5) if all_lats else 5,
             'lat_max': max(35, max(all_lats) + 5) if all_lats else 35,
