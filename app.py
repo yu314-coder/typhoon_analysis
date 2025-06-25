@@ -993,10 +993,10 @@ def generate_genesis_prediction_monthly(month, oni_value, year=2025):
         storm_predictions = []
         for i, genesis in enumerate(genesis_events):
             storm_track = generate_storm_track_from_genesis(
-                genesis['lat'], 
-                genesis['lon'], 
-                genesis['day'], 
-                month, 
+                genesis['lat'],
+                genesis['lon'],
+                genesis['day'],
+                month,
                 oni_value,
                 storm_id=i+1
             )
@@ -1008,6 +1008,10 @@ def generate_genesis_prediction_monthly(month, oni_value, year=2025):
                     'track': storm_track,
                     'uncertainty': calculate_track_uncertainty(storm_track)
                 })
+
+        logging.info(
+            f"Monthly genesis prediction: {len(genesis_events)} events, {len(storm_predictions)} tracks"
+        )
         
         return {
             'month': month,
@@ -3014,12 +3018,19 @@ def create_interface():
                     try:
                         # Generate monthly prediction using GPI
                         prediction_data = generate_genesis_prediction_monthly(month, oni, year=2025)
+                        logging.info(
+                            f"Genesis prediction run for month={month}, oni={oni}: {len(prediction_data.get('genesis_events', []))} events"
+                        )
 
                         # Create animation figure
                         genesis_fig = create_genesis_animation(prediction_data, animation)
 
-                        # Convert to HTML for reliable interactivity
-                        genesis_html = pio.to_html(genesis_fig, include_plotlyjs='cdn', full_html=False)
+                        # Convert to HTML with inline Plotly JS for HF Spaces without CDN access
+                        genesis_html = pio.to_html(
+                            genesis_fig,
+                            include_plotlyjs='inline',
+                            full_html=False
+                        )
 
                         # Generate summary
                         summary_text = create_prediction_summary(prediction_data)
@@ -3031,7 +3042,7 @@ def create_interface():
                         error_msg = f"Genesis prediction failed: {str(e)}\n\nDetails:\n{traceback.format_exc()}"
                         logging.error(error_msg)
                         err_fig = create_error_plot(error_msg)
-                        err_html = pio.to_html(err_fig, include_plotlyjs='cdn', full_html=False)
+                        err_html = pio.to_html(err_fig, include_plotlyjs='inline', full_html=False)
                         return err_html, error_msg
                 
                 generate_genesis_btn.click(
