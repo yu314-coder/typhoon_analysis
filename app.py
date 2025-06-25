@@ -3004,7 +3004,7 @@ def create_interface():
                         """)
                 
                 with gr.Row():
-                    genesis_animation = gr.HTML(label="🗺️ Daily Genesis Potential & Storm Development")
+                    genesis_animation = gr.Plot(label="🗺️ Daily Genesis Potential & Storm Development")
                 
                 with gr.Row():
                     genesis_summary = gr.Textbox(label="📋 Monthly Genesis Analysis Summary", lines=25)
@@ -3020,15 +3020,14 @@ def create_interface():
                         # Generate summary
                         summary_text = create_prediction_summary(prediction_data)
 
-                        html = genesis_fig.to_html(include_plotlyjs='cdn', full_html=False)
-                        return html, summary_text
+                        return genesis_fig, summary_text
                         
                     except Exception as e:
                         import traceback
                         error_msg = f"Genesis prediction failed: {str(e)}\n\nDetails:\n{traceback.format_exc()}"
                         logging.error(error_msg)
                         err_fig = create_error_plot(error_msg)
-                        return err_fig.to_html(include_plotlyjs='cdn', full_html=False), error_msg
+                        return err_fig, error_msg
                 
                 generate_genesis_btn.click(
                     fn=run_genesis_prediction,
