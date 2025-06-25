@@ -1,0 +1,62 @@
+# ───────── Core GUI Framework ─────────
+gradio==5.27.0
+pydantic>=2.6.0,<2.11.0
+fastapi>=0.115.0,<0.120.0
+starlette==0.45.3
+
+# ───────── Data Processing & Visualization ─────────
+pandas>=1.5.0
+numpy>=1.21.0,<2.0.0
+matplotlib>=3.5.0
+plotly>=5.0.0
+cartopy>=0.21.0
+
+# ───────── Machine Learning & Statistics ─────────
+scikit-learn>=1.0.0
+scipy>=1.7.0
+statsmodels>=0.13.0
+
+# ───────── Advanced ML Features ─────────
+umap-learn>=0.5.0        # UMAP dimensionality reduction for clustering
+numba>=0.56.0            # Required for UMAP performance
+pynndescent>=0.5.0       # UMAP dependency for nearest neighbor search
+
+# ───────── Enhanced Prediction Models ─────────
+tensorflow-cpu>=2.12.0,<2.16.0  # CNN features for advanced predictions
+# Note: Using CPU version for better Hugging Face Spaces compatibility
+
+# ───────── Climate & Weather Data ─────────
+xarray>=0.20.0
+requests>=2.28.0
+tropycal>=1.0.0
+
+# ───────── Animation & Video Processing ─────────
+imageio>=2.20.0          # For animation export
+imageio-ffmpeg>=0.4.7    # FFmpeg support for video generation
+opencv-python-headless>=4.6.0  # Computer vision for enhanced animations
+
+# ───────── Geospatial Processing ─────────
+shapely>=1.8.0           # Geometric operations
+geopandas>=0.12.0        # Geospatial data analysis (optional but useful)
+
+# ───────── Performance & Optimization ─────────
+joblib>=1.1.0            # Parallel processing for ML models
+threadpoolctl>=3.0.0     # Thread pool control for performance
+
+# ───────── Fixed Protobuf Compatibility ─────────
+protobuf>=3.20.0,<4.0.0  # Fixed protobuf version for compatibility
+
+# ───────── Error Handling & Logging ─────────
+tqdm>=4.64.0             # Progress bars for data loading
+colorlog>=6.6.0          # Enhanced logging with colors
+
+# ───────── Optional Enhanced Features ─────────
+# Uncomment the following for additional capabilities:
+
+netcdf4>=1.6.0         # For advanced climate data formats
+h5py>=3.7.0            # HDF5 support for large datasets
+zarr>=2.12.0           # Chunked, compressed arrays
+dask>=2022.8.0         # Parallel computing for large datasets
+
+# Note: The app gracefully handles missing optional dependencies
+# and provides fallback functionality when advanced features are unavailable
