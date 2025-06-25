@@ -976,22 +976,24 @@ def generate_genesis_prediction_monthly(month, oni_value, year=2025):
                     genesis_gpi = gpi_field[max_i, max_j]
                     
                     # Determine probability of actual genesis
-            # Probability influenced by ONI to mimic El Niño/La Niña effects
-            genesis_prob = np.clip(0.3 + genesis_gpi / 4.0 + 0.2 * np.tanh(oni_value), 0, 0.9)
+                    # Probability influenced by ONI to mimic El Niño/La Niña effects
+                    genesis_prob = np.clip(
+                        0.3 + genesis_gpi / 4.0 + 0.2 * np.tanh(oni_value), 0, 0.9
+                    )
 
-            if np.random.random() < genesis_prob:
-                event = {
-                    'day': day,
-                    'lat': genesis_lat,
-                    'lon': genesis_lon,
-                    'gpi': genesis_gpi,
-                    'probability': genesis_prob,
-                    'date': f"{year}-{month:02d}-{day:02d}"
-                }
-                logging.info(
-                    f"Genesis on day {day}: lat={genesis_lat:.1f} lon={genesis_lon:.1f} GPI={genesis_gpi:.2f} prob={genesis_prob:.2f}"
-                )
-                genesis_events.append(event)
+                    if np.random.random() < genesis_prob:
+                        event = {
+                            'day': day,
+                            'lat': genesis_lat,
+                            'lon': genesis_lon,
+                            'gpi': genesis_gpi,
+                            'probability': genesis_prob,
+                            'date': f"{year}-{month:02d}-{day:02d}"
+                        }
+                        logging.info(
+                            f"Genesis on day {day}: lat={genesis_lat:.1f} lon={genesis_lon:.1f} GPI={genesis_gpi:.2f} prob={genesis_prob:.2f}"
+                        )
+                        genesis_events.append(event)
         
         # Generate storm tracks for genesis events
         storm_predictions = []
