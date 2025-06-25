@@ -2822,18 +2822,23 @@ def generate_enhanced_track_video(year, typhoon_selection, standard):
             interval=400, blit=False, repeat=True  # Slightly slower for better viewing
         )
         
-        # Save animation
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4', 
+        # Save animation with graceful fallback if FFmpeg is unavailable
+        if shutil.which('ffmpeg'):
+            writer = animation.FFMpegWriter(
+                fps=3, bitrate=2000, codec='libx264',
+                extra_args=['-pix_fmt', 'yuv420p']
+            )
+            suffix = '.mp4'
+        else:
+            print("FFmpeg not found - generating GIF instead")
+            writer = animation.PillowWriter(fps=3)
+            suffix = '.gif'
+
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix,
                                               dir=tempfile.gettempdir())
-        
-        # Enhanced writer settings
-        writer = animation.FFMpegWriter(
-            fps=3, bitrate=2000, codec='libx264',  # Slower FPS for better visibility
-            extra_args=['-pix_fmt', 'yuv420p']  # Better compatibility
-        )
-        
+
         print(f"Saving animation to {temp_file.name}")
-        anim.save(temp_file.name, writer=writer, dpi=120)  # Higher DPI for better quality
+        anim.save(temp_file.name, writer=writer, dpi=120)
         plt.close(fig)
         
         print(f"Video generated successfully: {temp_file.name}")
