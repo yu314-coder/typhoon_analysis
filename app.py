@@ -25,6 +25,7 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import plotly.graph_objects as go
 import plotly.express as px
+import plotly.io as pio
 from plotly.subplots import make_subplots
 
 from sklearn.manifold import TSNE
@@ -3004,7 +3005,7 @@ def create_interface():
                         """)
                 
                 with gr.Row():
-                    genesis_animation = gr.Plot(label="🗺️ Daily Genesis Potential & Storm Development")
+                    genesis_animation = gr.HTML(label="🗺️ Daily Genesis Potential & Storm Development")
                 
                 with gr.Row():
                     genesis_summary = gr.Textbox(label="📋 Monthly Genesis Analysis Summary", lines=25)
@@ -3013,21 +3014,25 @@ def create_interface():
                     try:
                         # Generate monthly prediction using GPI
                         prediction_data = generate_genesis_prediction_monthly(month, oni, year=2025)
-                        
-                        # Create animation
+
+                        # Create animation figure
                         genesis_fig = create_genesis_animation(prediction_data, animation)
+
+                        # Convert to HTML for reliable interactivity
+                        genesis_html = pio.to_html(genesis_fig, include_plotlyjs='cdn', full_html=False)
 
                         # Generate summary
                         summary_text = create_prediction_summary(prediction_data)
 
-                        return genesis_fig, summary_text
-                        
+                        return genesis_html, summary_text
+
                     except Exception as e:
                         import traceback
                         error_msg = f"Genesis prediction failed: {str(e)}\n\nDetails:\n{traceback.format_exc()}"
                         logging.error(error_msg)
                         err_fig = create_error_plot(error_msg)
-                        return err_fig, error_msg
+                        err_html = pio.to_html(err_fig, include_plotlyjs='cdn', full_html=False)
+                        return err_html, error_msg
                 
                 generate_genesis_btn.click(
                     fn=run_genesis_prediction,
