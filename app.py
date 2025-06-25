@@ -25,7 +25,6 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import plotly.graph_objects as go
 import plotly.express as px
-import plotly.io as pio
 from plotly.subplots import make_subplots
 
 from sklearn.manifold import TSNE
@@ -977,17 +976,22 @@ def generate_genesis_prediction_monthly(month, oni_value, year=2025):
                     genesis_gpi = gpi_field[max_i, max_j]
                     
                     # Determine probability of actual genesis
-                    genesis_prob = min(0.8, genesis_gpi / 3.0)
-                    
-                    if np.random.random() < genesis_prob:
-                        genesis_events.append({
-                            'day': day,
-                            'lat': genesis_lat,
-                            'lon': genesis_lon,
-                            'gpi': genesis_gpi,
-                            'probability': genesis_prob,
-                            'date': f"{year}-{month:02d}-{day:02d}"
-                        })
+            # Probability influenced by ONI to mimic El Niño/La Niña effects
+            genesis_prob = np.clip(0.3 + genesis_gpi / 4.0 + 0.2 * np.tanh(oni_value), 0, 0.9)
+
+            if np.random.random() < genesis_prob:
+                event = {
+                    'day': day,
+                    'lat': genesis_lat,
+                    'lon': genesis_lon,
+                    'gpi': genesis_gpi,
+                    'probability': genesis_prob,
+                    'date': f"{year}-{month:02d}-{day:02d}"
+                }
+                logging.info(
+                    f"Genesis on day {day}: lat={genesis_lat:.1f} lon={genesis_lon:.1f} GPI={genesis_gpi:.2f} prob={genesis_prob:.2f}"
+                )
+                genesis_events.append(event)
         
         # Generate storm tracks for genesis events
         storm_predictions = []
@@ -1682,6 +1686,66 @@ Storm {storm['storm_id']}:
     except Exception as e:
         logging.error(f"Error creating prediction summary: {e}")
         return f"Error generating summary: {str(e)}"
+
+def generate_genesis_video(prediction_data):
+    """Create a simple MP4/GIF animation for the genesis prediction"""
+    try:
+        daily_maps = prediction_data.get('daily_gpi_maps', [])
+        if not daily_maps:
+            return None
+
+        storms = prediction_data.get('storm_predictions', [])
+        lat_range = daily_maps[0]['lat_range']
+        lon_range = daily_maps[0]['lon_range']
+
+        fig, ax = plt.subplots(figsize=(8, 6), subplot_kw={'projection': ccrs.PlateCarree()})
+        ax.set_extent([lon_range.min()-5, lon_range.max()+5,
+                       lat_range.min()-5, lat_range.max()+5])
+        ax.coastlines()
+        ax.add_feature(cfeature.BORDERS, linewidth=0.5)
+
+        img = ax.imshow(
+            daily_maps[0]['gpi_field'], origin='lower',
+            extent=[lon_range.min(), lon_range.max(), lat_range.min(), lat_range.max()],
+            vmin=0, vmax=3, cmap='viridis', alpha=0.8
+        )
+        cbar = plt.colorbar(img, ax=ax, orientation='vertical', pad=0.02, label='GPI')
+
+        lines = [ax.plot([], [], 'k-', lw=2)[0] for _ in storms]
+        points = [ax.plot([], [], 'ro')[0] for _ in storms]
+
+        title = ax.set_title('')
+
+        def animate(i):
+            day = daily_maps[i]['day']
+            img.set_data(daily_maps[i]['gpi_field'])
+            for line, point, storm in zip(lines, points, storms):
+                past = [p for p in storm.get('track', []) if p['day'] <= day]
+                if not past:
+                    continue
+                lats = [p['lat'] for p in past]
+                lons = [p['lon'] for p in past]
+                line.set_data(lons, lats)
+                point.set_data(lons[-1], lats[-1])
+            title.set_text(f"Day {day} of {prediction_data['month']:02d}/{prediction_data.get('year', 2025)}")
+            return [img, *lines, *points, title]
+
+        anim = animation.FuncAnimation(fig, animate, frames=len(daily_maps), interval=600, blit=False)
+
+        if shutil.which('ffmpeg'):
+            writer = animation.FFMpegWriter(fps=2)
+            suffix = '.mp4'
+        else:
+            writer = animation.PillowWriter(fps=2)
+            suffix = '.gif'
+
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir=tempfile.gettempdir())
+        anim.save(temp_file.name, writer=writer)
+        plt.close(fig)
+        return temp_file.name
+    except Exception as e:
+        logging.error(f"Error generating genesis video: {e}")
+        return None
 
 # -----------------------------
 # FIXED: ADVANCED ML FEATURES WITH ROBUST ERROR HANDLING
@@ -3009,7 +3073,7 @@ def create_interface():
                         """)
                 
                 with gr.Row():
-                    genesis_animation = gr.HTML(label="🗺️ Daily Genesis Potential & Storm Development")
+                    genesis_animation = gr.Video(label="🗺️ Daily Genesis Potential & Storm Development")
                 
                 with gr.Row():
                     genesis_summary = gr.Textbox(label="📋 Monthly Genesis Analysis Summary", lines=25)
@@ -3022,28 +3086,18 @@ def create_interface():
                             f"Genesis prediction run for month={month}, oni={oni}: {len(prediction_data.get('genesis_events', []))} events"
                         )
 
-                        # Create animation figure
-                        genesis_fig = create_genesis_animation(prediction_data, animation)
-
-                        # Convert to HTML with inline Plotly JS for HF Spaces without CDN access
-                        genesis_html = pio.to_html(
-                            genesis_fig,
-                            include_plotlyjs='inline',
-                            full_html=False
-                        )
+                        video_path = generate_genesis_video(prediction_data)
 
                         # Generate summary
                         summary_text = create_prediction_summary(prediction_data)
 
-                        return genesis_html, summary_text
+                        return video_path, summary_text
 
                     except Exception as e:
                         import traceback
                         error_msg = f"Genesis prediction failed: {str(e)}\n\nDetails:\n{traceback.format_exc()}"
                         logging.error(error_msg)
-                        err_fig = create_error_plot(error_msg)
-                        err_html = pio.to_html(err_fig, include_plotlyjs='inline', full_html=False)
-                        return err_html, error_msg
+                        return None, error_msg
                 
                 generate_genesis_btn.click(
                     fn=run_genesis_prediction,
